@@ -1,0 +1,88 @@
+version: '3.8'
+
+# ==============================================================================
+# FleetPulse Phase 4 Production Deployment Topology
+# Resolves:
+#   1. FastAPI Direct ALB Exposure (enforces API Gateway auth + private subnet)
+#   2. WebSocket Ingestion Statefulness (decoupled via Redis Pub/Sub)
+# Network Isolation:
+#   - app_network: Frontend to FastAPI Microservice
+#   - data_network: FastAPI Microservice to TimescaleDB & Redis Cache
+# ==============================================================================
+
+services:
+
+  # 1. Database Layer (Isolated Data Network)
+  timescaledb:
+    image: timescale/timescaledb:latest-pg15
+    container_name: fleetpulse_db
+    restart: always
+    environment:
+      POSTGRES_DB: fleetpulse
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: supersecretpassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - timescaledb_data:/var/lib/postgresql/data
+    networks:
+      - data_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d fleetpulse"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis_cache:
+    image: redis:7-alpine
+    container_name: fleetpulse_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    networks:
+      - data_network
+
+  # 2. FastAPI ML Microservice (Private App Network)
+  fastapi_backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: fleetpulse_api
+    restart: always
+    environment:
+      DATABASE_URL: postgresql://admin:supersecretpassword@timescaledb:5432/fleetpulse
+      REDIS_URL: redis://redis_cache:6379/0
+      ONNX_MODEL_DIR: /app/models
+    ports:
+      - "8000:8000"
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    networks:
+      - app_network
+      - data_network
+
+  # 3. Next.js Web Frontend App
+  nextjs_frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: fleetpulse_web
+    restart: always
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - fastapi_backend
+    networks:
+      - app_network
+
+networks:
+  app_network:
+    driver: bridge
+  data_network:
+    driver: bridge
+
+volumes:
+  timescaledb_data:

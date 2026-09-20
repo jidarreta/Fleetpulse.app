@@ -1,0 +1,6 @@
+{
+  "name": "FleetPulse",
+  "description": "Predictive telematics and AI diagnostic platform featuring Fleet Command Center and Mechanic Copilot.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
