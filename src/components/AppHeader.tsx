@@ -40,8 +40,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
       active ? 'bg-blue-50 text-blue-800 shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
     }`;
   const dropdownBaseClass = 'absolute z-50 w-64 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl shadow-slate-900/10';
-  const dropdownAboveClass = `${dropdownBaseClass} bottom-full left-0 mb-2`;
-  const menuItemClass = 'flex w-full items-start gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-slate-50';
+  const dropdownAboveClass = `${dropdownBaseClass} bottom-full left-0 mb-2 p-1`;
+  const menuItemClass = 'flex w-full items-center gap-2 rounded-lg px-2 py-1 text-left text-xs leading-4 text-slate-700 transition-colors hover:bg-slate-50';
 
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl">
@@ -110,11 +110,11 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             <div className={dropdownAboveClass} role="menu" aria-label="AI and analytics">
               <button type="button" role="menuitem" onClick={() => navigate('HYBRID_ML')} className={menuItemClass}>
                 <Cpu className="mt-0.5 h-4 w-4 text-blue-600" />
-                <span><span className="block text-sm font-semibold text-slate-900">AI architecture</span><span className="mt-0.5 block text-xs text-slate-500">Models and risk scoring</span></span>
+                <span className="font-medium">AI architecture</span>
               </button>
               <button type="button" role="menuitem" onClick={() => navigate('AI_6_PHASES')} className={menuItemClass}>
                 <BrainCircuit className="mt-0.5 h-4 w-4 text-blue-600" />
-                <span><span className="block text-sm font-semibold text-slate-900">AI lifecycle</span><span className="mt-0.5 block text-xs text-slate-500">Six phases and decisions</span></span>
+                <span className="font-medium">AI lifecycle</span>
               </button>
             </div>
           )}
@@ -128,11 +128,11 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             <div className={dropdownAboveClass} role="menu" aria-label="Platform tools">
               <button type="button" role="menuitem" onClick={() => navigate('DEPLOYMENT_TOPOLOGY')} className={menuItemClass}>
                 <Layers className="mt-0.5 h-4 w-4 text-blue-600" />
-                <span><span className="block text-sm font-semibold text-slate-900">System architecture</span><span className="mt-0.5 block text-xs text-slate-500">Deployment and connections</span></span>
+                <span className="font-medium">System architecture</span>
               </button>
               <button type="button" role="menuitem" onClick={() => navigate('TELEMETRY_SIMULATOR')} className={menuItemClass}>
                 <Radio className="mt-0.5 h-4 w-4 text-blue-600" />
-                <span><span className="block text-sm font-semibold text-slate-900">Telemetry lab</span><span className="mt-0.5 block text-xs text-slate-500">Explore incoming vehicle data</span></span>
+                <span className="font-medium">Telemetry lab</span>
               </button>
             </div>
           )}
