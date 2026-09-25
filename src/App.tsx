@@ -208,6 +208,11 @@ function FleetPulseApp() {
     const v = vehicles.find((item) => item.vehicleId === vehicleId);
     if (!v) return;
 
+    if (v.failureProbability < 0.8) {
+      showToast('A repair recommendation requires at least 80% model confidence.');
+      return;
+    }
+
     // Check if open ticket exists
     const existing = workOrders.find((w) => w.vehicleId === vehicleId && w.status !== 'COMPLETED');
     if (existing) {
@@ -280,7 +285,7 @@ function FleetPulseApp() {
       body: JSON.stringify(newOrder),
     }).catch(() => {});
 
-    showToast(`Dispatched ${newId} for ${v.vehicleId}! Auto-filled SHAP diagnostics and reserved parts.`);
+    showToast(`Recommendation ${newId} sent for mechanic verification. Parts are not reserved until approved.`);
   };
 
   const handleUpdateWorkOrder = (updated: WorkOrder) => {

@@ -4,7 +4,6 @@ import path from 'path';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { WebSocketServer, WebSocket as WsWebSocket } from 'ws';
-import { createServer as createViteServer } from 'vite';
 import { INITIAL_VEHICLES, INITIAL_WORK_ORDERS } from './src/data/mockFleetData';
 import { VehicleRiskAssessment, WorkOrder, TelemetryPacket, TelemetryValidationResult } from './src/types';
 
@@ -112,7 +111,7 @@ function broadcastSSE(event: string, data: any) {
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT) || 3000;
 
   app.use(express.json());
 
@@ -839,6 +838,14 @@ async function startServer() {
         return;
       }
 
+      if (vehicle.failureProbability < 0.8) {
+        res.status(422).json({
+          success: false,
+          message: 'Actionable repair recommendations require at least 80% model confidence.',
+        });
+        return;
+      }
+
       const newId = `WO-${Math.floor(1000 + Math.random() * 9000)}`;
       const newOrder: WorkOrder = {
         id: newId,
@@ -1003,7 +1010,11 @@ async function startServer() {
   });
 
   // PATCH /api/v1/work-orders/:id - Updates status and captures closed-loop validation feedback
-  app.patch('/api/v1/work-orders/:id', (req: Request, res: Response) => {
+  app.patch(
+    '/api/v1/work-orders/:id',
+    authenticateJWT,
+    requireRoles(['FLEET_MECHANIC']),
+    (req: AuthRequest, res: Response) => {
     const { id } = req.params;
     const { status, closedLoopFeedback, notes, assignedMechanic, partsRequired } = req.body;
 
@@ -1014,6 +1025,19 @@ async function startServer() {
     }
 
     const currentOrder = workOrders[orderIndex];
+
+    if (status === 'COMPLETED' && !closedLoopFeedback && !currentOrder.closedLoopFeedback) {
+      res.status(422).json({
+        success: false,
+        message: 'A mechanic must submit Failure Confirmed or False Positive feedback before closing this work order.',
+      });
+      return;
+    }
+
+    if (closedLoopFeedback && !['FAILURE_CONFIRMED', 'FALSE_POSITIVE'].includes(closedLoopFeedback.tag)) {
+      res.status(400).json({ success: false, message: 'Invalid ground-truth feedback tag.' });
+      return;
+    }
 
     const updatedOrder: WorkOrder = {
       ...currentOrder,
@@ -1033,8 +1057,8 @@ async function startServer() {
 
     workOrders[orderIndex] = updatedOrder;
 
-    // If order completed and failure confirmed, reset vehicle risk
-    if (status === 'COMPLETED') {
+    // Reset the risk estimate only when a mechanic physically confirms the failure.
+    if (status === 'COMPLETED' && updatedOrder.closedLoopFeedback?.tag === 'FAILURE_CONFIRMED') {
       const vIndex = vehicles.findIndex((v) => v.vehicleId === currentOrder.vehicleId);
       if (vIndex !== -1) {
         vehicles[vIndex] = {
@@ -1054,12 +1078,14 @@ async function startServer() {
       data: updatedOrder,
       message: `Work order ${id} updated successfully.`,
     });
-  });
+    }
+  );
 
   // ==========================================
   // VITE DEV MIDDLEWARE & PRODUCTION STATIC SERVING
   // ==========================================
   if (process.env.NODE_ENV !== 'production') {
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',

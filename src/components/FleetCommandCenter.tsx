@@ -453,6 +453,7 @@ export const FleetCommandCenter: React.FC<FleetCommandCenterProps> = ({
                       {/* 7. Quick Action button */}
                       <td className="py-3 pr-2 text-right space-x-1.5 whitespace-nowrap">
                         <button
+                          disabled={userRole === 'MECHANIC' || v.failureProbability < 0.8 || !!v.activeWorkOrderId}
                           onClick={(e) => {
                             e.stopPropagation();
                             onSelectVehicle(v.vehicleId);
@@ -469,14 +470,14 @@ export const FleetCommandCenter: React.FC<FleetCommandCenterProps> = ({
                             onSelectVehicle(v.vehicleId);
                             onDispatchWorkOrder(v.vehicleId);
                           }}
-                          className={`px-2.5 py-1 rounded-lg text-white text-[11px] font-medium transition-colors cursor-pointer ${
-                            v.failureProbability >= 0.8
-                              ? 'bg-rose-600 hover:bg-rose-500 shadow-sm shadow-rose-900/50'
-                              : 'bg-indigo-600 hover:bg-indigo-500'
+                          className={`px-2.5 py-1 rounded-lg text-white text-[11px] font-medium transition-colors ${
+                            userRole === 'MECHANIC' || v.failureProbability < 0.8 || v.activeWorkOrderId
+                              ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                              : 'bg-rose-600 hover:bg-rose-500 shadow-sm shadow-rose-900/50 cursor-pointer'
                           }`}
-                          title="1-Click Create Work Order"
+                          title={v.failureProbability < 0.8 ? 'Actionable recommendations require at least 80% confidence' : 'Send recommendation for mechanic verification'}
                         >
-                          {v.activeWorkOrderId ? 'Dispatched' : 'Create Work Order'}
+                          {v.activeWorkOrderId ? 'In Review' : v.failureProbability < 0.8 ? 'Below 80%' : 'Recommend Repair'}
                         </button>
                       </td>
                     </tr>
@@ -623,11 +624,12 @@ export const FleetCommandCenter: React.FC<FleetCommandCenterProps> = ({
                 </button>
               ) : (
                 <button
+                  disabled={selectedVehicle.failureProbability < 0.8 || !!selectedVehicle.activeWorkOrderId}
                   onClick={() => onDispatchWorkOrder(selectedVehicle.vehicleId)}
-                  className="flex-1 py-2 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md transition-all flex items-center justify-center space-x-1.5 cursor-pointer"
+                  className="flex-1 py-2 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed text-white text-xs font-semibold shadow-md transition-all flex items-center justify-center space-x-1.5 cursor-pointer"
                 >
                   <Wrench className="w-3.5 h-3.5" />
-                  <span>1-Click Dispatch to Shop</span>
+                  <span>{selectedVehicle.failureProbability < 0.8 ? 'Below 80% Confidence' : selectedVehicle.activeWorkOrderId ? 'Under Mechanic Review' : 'Recommend Repair'}</span>
                 </button>
               )}
 
@@ -703,14 +705,15 @@ export const FleetCommandCenter: React.FC<FleetCommandCenterProps> = ({
                 </p>
               </div>
               <button
+                disabled={selectedVehicle.failureProbability < 0.8 || !!selectedVehicle.activeWorkOrderId}
                 onClick={() => {
                   onDispatchWorkOrder(selectedVehicle.vehicleId);
                   setIsDrawerOpen(false);
                 }}
-                className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md flex items-center space-x-1.5 cursor-pointer"
+                className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed text-white text-xs font-semibold shadow-md flex items-center space-x-1.5 cursor-pointer"
               >
                 <Wrench className="w-4 h-4" />
-                <span>1-Click Dispatch to Shop Bay</span>
+                <span>{selectedVehicle.failureProbability < 0.8 ? 'Below 80% Confidence' : selectedVehicle.activeWorkOrderId ? 'Under Mechanic Review' : 'Recommend Repair'}</span>
               </button>
             </div>
 

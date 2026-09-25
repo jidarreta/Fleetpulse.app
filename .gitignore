@@ -1,6 +1,7 @@
 node_modules/
 build/
 dist/
+.amplify-hosting/
 coverage/
 .DS_Store
 *.log

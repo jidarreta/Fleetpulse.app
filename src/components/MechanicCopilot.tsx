@@ -85,11 +85,6 @@ export const MechanicCopilot: React.FC<MechanicCopilotProps> = ({
       mechanicId: mechanicId,
     });
 
-    onUpdateWorkOrder({
-      ...currentOrder,
-      status: 'COMPLETED',
-    });
-
     setShowClosureModal(false);
     setIsSuccessToast(true);
     setTimeout(() => setIsSuccessToast(false), 4000);
@@ -341,6 +336,12 @@ export const MechanicCopilot: React.FC<MechanicCopilotProps> = ({
                 )}
               </div>
 
+              {currentOrder.status === 'PENDING_DISPATCH' && (
+                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                  AI output is a recommendation. Review telemetry and SHAP evidence before scheduling the repair or authorizing parts.
+                </div>
+              )}
+
               {/* Module 3: Parts Inventory Bridge */}
               <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg space-y-3">
                 <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
@@ -382,8 +383,12 @@ export const MechanicCopilot: React.FC<MechanicCopilotProps> = ({
                               Unit Cost: ${matchedInv?.unitCost || '385.00'}
                             </span>
                           </div>
-                          <span className="px-2 py-1 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">
-                            RESERVED
+                          <span className={`px-2 py-1 rounded border text-[10px] font-bold ${
+                            currentOrder.status === 'PENDING_DISPATCH'
+                              ? 'bg-amber-500/10 text-amber-300 border-amber-500/30'
+                              : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                          }`}>
+                            {currentOrder.status === 'PENDING_DISPATCH' ? 'PROPOSED — NOT RESERVED' : 'MECHANIC APPROVED'}
                           </span>
                         </div>
                       </div>

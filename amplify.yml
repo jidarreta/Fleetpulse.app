@@ -1,0 +1,17 @@
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm install --no-audit --no-fund
+    build:
+      commands:
+        - npm run build
+        - mkdir -p .amplify-hosting/compute/default/dist
+        - cp -R dist/. .amplify-hosting/compute/default/dist/
+        - cp dist/server.cjs .amplify-hosting/compute/default/server.cjs
+        - cp deploy-manifest.json .amplify-hosting/deploy-manifest.json
+  artifacts:
+    baseDirectory: .amplify-hosting
+    files:
+      - '**/*'
