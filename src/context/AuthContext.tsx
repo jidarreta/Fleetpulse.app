@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, AuthRole } from '../types';
+import { playLoginChime } from '../services/loginChime';
 
 interface AuthContextType {
   user: User | null;
@@ -90,6 +91,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(data.user);
         localStorage.setItem(TOKEN_KEY, data.token);
         localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+        playLoginChime();
         return { success: true };
       } else {
         return { success: false, message: data.message || 'Login failed' };
@@ -113,6 +115,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(data.user);
         localStorage.setItem(TOKEN_KEY, data.token);
         localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+        playLoginChime();
         return { success: true };
       } else {
         return { success: false, message: data.message || 'Registration failed' };
