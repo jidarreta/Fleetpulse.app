@@ -19,27 +19,22 @@ import { LiveTelemetryStreamSimulator } from './components/LiveTelemetryStreamSi
 import { HybridMLArchitectureStudio } from './components/HybridMLArchitectureStudio';
 import { Phase4DeploymentTopologyStudio } from './components/Phase4DeploymentTopologyStudio';
 import FleetDiagnosticCard from './components/FleetDiagnosticCard';
+import { AppHeader } from './components/AppHeader';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { AuthPage } from './components/AuthPage';
 import { generateFleetPulseDocx } from './services/docxExport';
-import {
-  Activity,
-  LayoutDashboard,
-  Wrench,
-  BrainCircuit,
-  Terminal,
-  FileDown,
-  CheckCircle2,
-  Radio,
-  Shield,
-  ShieldAlert,
-  ShieldCheck,
-  UserCheck,
-  Info,
-  LogOut,
-  Cpu,
-  Layers,
-} from 'lucide-react';
+import { Activity, CheckCircle2, Radio } from 'lucide-react';
+import { AppView } from './navigation';
+
+const pageCopy: Record<AppView, { section: string; title: string; description: string }> = {
+  COMMAND_CENTER: { section: 'Operations', title: 'Fleet overview', description: 'A clear view of fleet health, vehicle alerts, and what needs attention next.' },
+  MECHANIC_COPILOT: { section: 'Service', title: 'Work orders', description: 'Review repair priorities, inspect vehicle evidence, and track shop outcomes.' },
+  HYBRID_ML: { section: 'AI & analytics', title: 'AI architecture', description: 'See how FleetPulse combines telemetry and machine learning to estimate risk.' },
+  AI_6_PHASES: { section: 'AI & analytics', title: 'AI lifecycle', description: 'Explore the six phases behind FleetPulse’s design and operations.' },
+  DEPLOYMENT_TOPOLOGY: { section: 'Platform', title: 'System architecture', description: 'Explore how FleetPulse services connect across the platform.' },
+  TELEMETRY_SIMULATOR: { section: 'Platform', title: 'Telemetry lab', description: 'Send sample vehicle readings and explore how the system responds.' },
+  DIAGNOSTIC_CARD: { section: 'Vehicle health', title: 'Live diagnostics', description: 'Inspect an individual vehicle’s score, signals, and contributing factors.' },
+};
 
 function FleetPulseApp() {
   const { user, token, isAuthenticated, isLoading, logout } = useAuth();
@@ -48,9 +43,7 @@ function FleetPulseApp() {
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>(INITIAL_WORK_ORDERS);
   const [inventory] = useState<InventoryPart[]>(INVENTORY_PARTS);
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>('FP-042');
-  const [currentTab, setCurrentTab] = useState<
-    'COMMAND_CENTER' | 'MECHANIC_COPILOT' | 'HYBRID_ML' | 'AI_6_PHASES' | 'DEPLOYMENT_TOPOLOGY' | 'TELEMETRY_SIMULATOR' | 'DIAGNOSTIC_CARD'
-  >('COMMAND_CENTER');
+  const [currentTab, setCurrentTab] = useState<AppView>('COMMAND_CENTER');
   const [isExporting, setIsExporting] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [roleOverride, setRoleOverride] = useState<UserRole | null>(null);
@@ -424,19 +417,17 @@ function FleetPulseApp() {
       const res = await fetch('/api/v1/vehicles');
       if (res.ok) {
         const json = await res.json();
-        if (json.success && Array.isArray(json.data)) {
-          setVehicles(json.data);
-        }
+        if (json.success && Array.isArray(json.data)) setVehicles(json.data);
       }
     } catch {
-      // ignore
+      // Keep the latest local telemetry state if the backend is temporarily unavailable.
     }
   };
 
   // If auth is loading, show loading screen
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-400 font-mono text-sm space-x-2">
+      <div className="fleet-theme min-h-screen flex items-center justify-center bg-[#f5f5f7] text-slate-600 font-sans text-sm space-x-2">
         <Activity className="w-5 h-5 animate-spin text-cyan-400" />
         <span>Initializing FleetPulse Session...</span>
       </div>
@@ -448,245 +439,21 @@ function FleetPulseApp() {
     return <AuthPage />;
   }
 
+  const page = pageCopy[currentTab];
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-cyan-500 selection:text-slate-950">
-      {/* Global Navigation Header */}
-      <header className="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 shadow-xl px-4 sm:px-6 py-3">
-        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
-          {/* Logo & Brand Identity */}
-          <div className="flex items-center space-x-3">
-            <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-indigo-600 shadow-lg shadow-cyan-500/20">
-              <Activity className="w-5 h-5 text-white animate-pulse" />
-            </div>
-            <div>
-              <div className="flex items-center space-x-2">
-                <h1 className="text-lg font-black tracking-tight text-white font-mono">
-                  FleetPulse<span className="text-cyan-400">.ai</span>
-                </h1>
-                <span className="text-[10px] uppercase font-mono font-bold px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-                  Production Build
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-400 font-medium">
-                Predictive Telematics & Explainable AI SaaS
-              </p>
-            </div>
-          </div>
-
-          {/* Module Nav Switcher */}
-          <nav className="flex items-center space-x-1 bg-slate-950/80 p-1 rounded-xl border border-slate-800 shadow-inner">
-            <button
-              id="nav-tab-command-center"
-              onClick={() => setCurrentTab('COMMAND_CENTER')}
-              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                currentTab === 'COMMAND_CENTER'
-                  ? 'bg-slate-800 text-white shadow-sm ring-1 ring-slate-700'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-              }`}
-            >
-              <LayoutDashboard className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Fleet Command Center</span>
-            </button>
-
-            <button
-              id="nav-tab-mechanic-copilot"
-              onClick={() => setCurrentTab('MECHANIC_COPILOT')}
-              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                currentTab === 'MECHANIC_COPILOT'
-                  ? 'bg-slate-800 text-white shadow-sm ring-1 ring-slate-700'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-              }`}
-            >
-              <Wrench className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Mechanic Copilot</span>
-              {workOrders.filter((w) => w.status === 'PENDING_DISPATCH').length > 0 && (
-                <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
-              )}
-            </button>
-
-            <button
-              id="nav-tab-hybrid-ml"
-              onClick={() => setCurrentTab('HYBRID_ML')}
-              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                currentTab === 'HYBRID_ML'
-                  ? 'bg-slate-800 text-white shadow-sm ring-1 ring-slate-700'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-              }`}
-            >
-              <Cpu className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Hybrid ML Architecture</span>
-            </button>
-
-            <button
-              id="nav-tab-ai-phases"
-              onClick={() => setCurrentTab('AI_6_PHASES')}
-              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                currentTab === 'AI_6_PHASES'
-                  ? 'bg-slate-800 text-white shadow-sm ring-1 ring-slate-700'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-              }`}
-            >
-              <BrainCircuit className="w-3.5 h-3.5 text-emerald-400" />
-              <span>AI 6-Phase Lifecycle Hub</span>
-            </button>
-
-            <button
-              id="nav-tab-deployment-topology"
-              onClick={() => setCurrentTab('DEPLOYMENT_TOPOLOGY')}
-              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                currentTab === 'DEPLOYMENT_TOPOLOGY'
-                  ? 'bg-slate-800 text-white shadow-sm ring-1 ring-slate-700'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-              }`}
-            >
-              <Layers className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Phase 4 Topology</span>
-            </button>
-
-            <button
-              id="nav-tab-telemetry-sim"
-              onClick={() => setCurrentTab('TELEMETRY_SIMULATOR')}
-              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                currentTab === 'TELEMETRY_SIMULATOR'
-                  ? 'bg-slate-800 text-white shadow-sm ring-1 ring-slate-700'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-              }`}
-            >
-              <Terminal className="w-3.5 h-3.5 text-amber-400" />
-              <span>FastAPI Telemetry Ingestion</span>
-            </button>
-
-            <button
-              id="nav-tab-diagnostic-card"
-              onClick={() => setCurrentTab('DIAGNOSTIC_CARD')}
-              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                currentTab === 'DIAGNOSTIC_CARD'
-                  ? 'bg-slate-800 text-white shadow-sm ring-1 ring-slate-700'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-              }`}
-            >
-              <Radio className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Live Diagnostic Card</span>
-            </button>
-          </nav>
-
-          {/* Right Action: Download Word Document (.docx) & Live Stream */}
-          <div className="flex items-center space-x-3">
-            <div className="hidden xl:flex items-center space-x-2 text-[11px] text-slate-400">
-              <span className="flex h-2 w-2 relative">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-              </span>
-              <span className="font-mono">10Hz TimescaleDB Stream</span>
-            </div>
-
-            {/* Authenticated User Status Pill & Logout */}
-            {user && (
-              <div className="flex items-center space-x-2 bg-slate-950/90 border border-slate-800 py-1 px-2.5 rounded-xl text-xs">
-                <div className="w-5 h-5 rounded-lg bg-gradient-to-tr from-cyan-500/30 to-indigo-500/30 border border-cyan-500/40 flex items-center justify-center text-cyan-300 font-bold text-[10px]">
-                  {user.name.charAt(0)}
-                </div>
-                <div className="hidden sm:block text-left">
-                  <div className="font-bold text-white text-[11px] leading-tight flex items-center gap-1.5">
-                    <span>{user.name}</span>
-                    <span
-                      className={`text-[9px] px-1 py-0.2 rounded font-mono font-bold ${
-                        user.role === 'OPERATIONS_MANAGER'
-                          ? 'bg-cyan-500/20 text-cyan-300'
-                          : 'bg-indigo-500/20 text-indigo-300'
-                      }`}
-                    >
-                      {user.role === 'OPERATIONS_MANAGER' ? 'OPS MGR' : 'MECHANIC'}
-                    </span>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={logout}
-                  title="Sign Out (Clear JWT token)"
-                  className="p-1 rounded text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition-colors cursor-pointer ml-1"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            )}
-
-            <button
-              id="btn-global-export-docx"
-              onClick={handleExportDocx}
-              disabled={isExporting}
-              className="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md shadow-indigo-600/25 flex items-center space-x-1.5 transition-all cursor-pointer disabled:opacity-50"
-            >
-              <FileDown className="w-3.5 h-3.5" />
-              <span>{isExporting ? 'Generating Docx...' : 'Export Word Doc (.docx)'}</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Dynamic RBAC Persona Switcher Strip */}
-        <div className="max-w-7xl mx-auto mt-3 pt-2.5 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center space-x-2 text-xs">
-            <ShieldCheck className="w-4 h-4 text-cyan-400" />
-            <span className="text-slate-400 font-semibold">Active User Role:</span>
-            <div className="inline-flex bg-slate-950 p-0.5 rounded-lg border border-slate-800">
-              <button
-                type="button"
-                onClick={() => handleRoleChange('FLEET_MANAGER')}
-                className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
-                  currentUserRole === 'FLEET_MANAGER'
-                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                Fleet Manager
-              </button>
-              <button
-                type="button"
-                onClick={() => handleRoleChange('MECHANIC')}
-                className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
-                  currentUserRole === 'MECHANIC'
-                    ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 shadow-sm'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                Mechanic
-              </button>
-              <button
-                type="button"
-                onClick={() => handleRoleChange('ADMINISTRATOR')}
-                className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
-                  currentUserRole === 'ADMINISTRATOR'
-                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                Administrator
-              </button>
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-2 text-[11px] text-slate-400 font-mono">
-            {currentUserRole === 'FLEET_MANAGER' && (
-              <span className="text-cyan-400/90 flex items-center space-x-1">
-                <Info className="w-3.5 h-3.5 inline" />
-                <span>Operational rights: Macro map, route swaps & dispatch unlocked. Shop ground-truth tagging restricted.</span>
-              </span>
-            )}
-            {currentUserRole === 'MECHANIC' && (
-              <span className="text-indigo-400/90 flex items-center space-x-1">
-                <Info className="w-3.5 h-3.5 inline" />
-                <span>Shop rights: Work order triage, parts reservation & ground-truth ML tagging unlocked. Dispatch & financial SLA masked.</span>
-              </span>
-            )}
-            {currentUserRole === 'ADMINISTRATOR' && (
-              <span className="text-emerald-400/90 flex items-center space-x-1">
-                <Info className="w-3.5 h-3.5 inline" />
-                <span>Governance rights: Full operational, shop technician, MLOps retraining, and telemetry DLQ controls unlocked.</span>
-              </span>
-            )}
-          </div>
-        </div>
-      </header>
+    <div className="fleet-theme min-h-screen flex flex-col bg-[#f5f5f7] font-sans text-[#1d1d1f] selection:bg-blue-200 selection:text-slate-900">
+      <AppHeader
+        currentTab={currentTab}
+        onNavigate={setCurrentTab}
+        pendingOrderCount={workOrders.filter((order) => order.status === 'PENDING_DISPATCH').length}
+        user={user}
+        currentUserRole={currentUserRole}
+        onRoleChange={handleRoleChange}
+        onExport={handleExportDocx}
+        isExporting={isExporting}
+        onLogout={logout}
+      />
 
       {/* Toast Notification Banner */}
       {toastMessage && (
@@ -697,7 +464,12 @@ function FleetPulseApp() {
       )}
 
       {/* Main Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6">
+      <main className="mx-auto w-full max-w-[1440px] flex-1 px-5 py-8 sm:px-8 lg:px-10">
+        <div className="mb-8 border-b border-slate-200 pb-6">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-blue-700">FleetPulse <span className="mx-1 text-slate-400">/</span> {page.section}</p>
+          <h1 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">{page.title}</h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">{page.description}</p>
+        </div>
         {currentTab === 'COMMAND_CENTER' && (
           <FleetCommandCenter
             vehicles={vehicles}
@@ -737,11 +509,17 @@ function FleetPulseApp() {
         )}
 
         {currentTab === 'TELEMETRY_SIMULATOR' && (
-          <TelemetrySimulator
-            vehicles={vehicles}
-            userRole={currentUserRole}
-            onIngestTelemetry={handleIngestTelemetry}
-          />
+          <div className="space-y-6">
+            <TelemetrySimulator
+              vehicles={vehicles}
+              userRole={currentUserRole}
+              onIngestTelemetry={handleIngestTelemetry}
+            />
+            <LiveTelemetryStreamSimulator
+              displayMode="inline"
+              onSimulationTriggered={refreshFleetData}
+            />
+          </div>
         )}
 
         {currentTab === 'DIAGNOSTIC_CARD' && (
@@ -764,19 +542,10 @@ function FleetPulseApp() {
         )}
       </main>
 
-      {/* Floating Live Telemetry Stream Simulator */}
-      <LiveTelemetryStreamSimulator onSimulationTriggered={refreshFleetData} />
-
-      {/* Footer Status Bar */}
-      <footer className="bg-slate-950 border-t border-slate-900 py-3 px-6 text-xs text-slate-500">
-        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center space-x-2">
-            <Radio className="w-3.5 h-3.5 text-cyan-500" />
-            <span>FleetPulse Telematics System • LightGBM + PyTorch LSTM (ONNX Runtime) • TimescaleDB</span>
-          </div>
-          <div className="font-mono text-[11px] text-slate-400">
-            J1939 CAN Bus Gateway: Online | 7 Connected Assets (incl. FP-042) | Sub-10ms Inference
-          </div>
+      <footer className="border-t border-slate-200 bg-white px-5 py-4 text-xs text-slate-500 sm:px-8">
+        <div className="mx-auto flex max-w-[1440px] flex-wrap items-center justify-between gap-2">
+          <span>FleetPulse fleet operations</span>
+          <span className="inline-flex items-center gap-2"><Radio className="h-3.5 w-3.5 text-emerald-600" /> Telemetry connection active</span>
         </div>
       </footer>
     </div>

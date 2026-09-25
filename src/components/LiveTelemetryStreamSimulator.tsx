@@ -14,12 +14,14 @@ import {
 
 interface LiveTelemetryStreamSimulatorProps {
   onSimulationTriggered?: (type: string, message: string) => void;
+  displayMode?: 'floating' | 'inline';
 }
 
 export const LiveTelemetryStreamSimulator: React.FC<LiveTelemetryStreamSimulatorProps> = ({
   onSimulationTriggered,
+  displayMode = 'floating',
 }) => {
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(displayMode === 'inline');
   const [isLoading, setIsLoading] = useState(false);
   const [lastActionStatus, setLastActionStatus] = useState<string | null>(null);
 
@@ -62,7 +64,9 @@ export const LiveTelemetryStreamSimulator: React.FC<LiveTelemetryStreamSimulator
     <aside
       id="live-telemetry-simulator-widget"
       aria-label="Live Telemetry Stream Simulator"
-      className="fixed bottom-4 right-4 z-50 transition-all duration-300 max-w-sm w-[92vw] sm:w-96"
+      className={displayMode === 'floating'
+        ? 'fixed bottom-4 right-4 z-50 transition-all duration-300 max-w-sm w-[92vw] sm:w-96'
+        : 'w-full transition-all duration-300'}
     >
       <div className="bg-slate-900/95 border border-cyan-500/40 rounded-2xl shadow-2xl backdrop-blur-xl overflow-hidden ring-1 ring-cyan-500/20">
         {/* Widget Header */}

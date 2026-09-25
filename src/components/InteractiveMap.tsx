@@ -107,17 +107,17 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
       </div>
 
       {/* SVG Canvas Map */}
-      <div className="relative flex-1 w-full h-full bg-[#0b1120] select-none">
+      <div className="relative flex-1 w-full h-full bg-[#f2f5f9] select-none">
         <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
           {/* Subtle grid mesh */}
           <defs>
             <pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
-              <path d="M 10 0 L 0 0 0 10" fill="none" stroke="#1e293b" strokeWidth="0.15" />
+              <path d="M 10 0 L 0 0 0 10" fill="none" stroke="#d6dee8" strokeWidth="0.15" />
             </pattern>
             {/* Gradient for Lake Michigan */}
             <linearGradient id="lakeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#0f172a" stopOpacity="0.8" />
-              <stop offset="100%" stopColor="#1e3a5f" stopOpacity="0.4" />
+              <stop offset="0%" stopColor="#dbe8f5" stopOpacity="0.8" />
+              <stop offset="100%" stopColor="#bfd5eb" stopOpacity="0.65" />
             </linearGradient>
           </defs>
 
@@ -127,10 +127,10 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
           <path
             d="M 52,0 C 58,15 62,28 60,42 C 58,48 54,54 50,56 C 47,56 46,50 48,36 C 49,20 48,10 47,0 Z"
             fill="url(#lakeGrad)"
-            stroke="#334155"
+            stroke="#aebdce"
             strokeWidth="0.3"
           />
-          <text x="56" y="24" fill="#475569" fontSize="2.8" fontWeight="600" letterSpacing="0.2">
+          <text x="56" y="24" fill="#667085" fontSize="2.8" fontWeight="600" letterSpacing="0.2">
             Lake Michigan
           </text>
 
@@ -139,7 +139,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
           <path
             d="M 5,30 Q 30,35 48,56 T 95,64"
             fill="none"
-            stroke="#334155"
+            stroke="#8b98a9"
             strokeWidth="0.8"
             strokeDasharray="1.5,1.5"
           />
@@ -147,7 +147,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
           <path
             d="M 48,56 L 68,96"
             fill="none"
-            stroke="#334155"
+            stroke="#8b98a9"
             strokeWidth="0.8"
             strokeDasharray="1.5,1.5"
           />
@@ -155,7 +155,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
           <path
             d="M 48,56 L 20,95"
             fill="none"
-            stroke="#334155"
+            stroke="#8b98a9"
             strokeWidth="0.8"
             strokeDasharray="1.5,1.5"
           />
@@ -163,7 +163,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
           {/* Major Metropolitan Hub Labels */}
           <g className="text-slate-500 font-sans">
             <circle cx="48" cy="56" r="1.2" fill="#64748b" />
-            <text x="50" y="58" fill="#94a3b8" fontSize="2.4" fontWeight="600">
+            <text x="50" y="58" fill="#475569" fontSize="2.4" fontWeight="600">
               Chicago Terminal Hub
             </text>
 

@@ -68,7 +68,7 @@ export const AuthPage: React.FC = () => {
   };
 
   return (
-    <div id="auth-page-container" className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden">
+    <div id="auth-page-container" className="fleet-theme min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden">
       {/* Ambient background glow */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[350px] bg-indigo-600/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 right-1/4 w-[600px] h-[300px] bg-cyan-600/10 rounded-full blur-3xl pointer-events-none" />

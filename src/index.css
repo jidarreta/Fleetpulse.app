@@ -1,1 +1,97 @@
 @import "tailwindcss";
+
+/* FleetPulse's lighter, calmer workspace palette. */
+.fleet-theme {
+  background-color: #f5f5f7;
+  color: #1d1d1f;
+  color-scheme: light;
+}
+
+.fleet-theme [class*="bg-slate-950"] {
+  background-color: #f5f5f7 !important;
+}
+
+.fleet-theme [class*="bg-slate-900"] {
+  background-color: #fff !important;
+}
+
+.fleet-theme [class*="bg-slate-800"] {
+  background-color: #f0f0f2 !important;
+}
+
+.fleet-theme [class*="bg-slate-700"] {
+  background-color: #e5e5ea !important;
+}
+
+.fleet-theme button[class*="bg-slate-"] .text-white {
+  color: #1d1d1f !important;
+}
+
+.fleet-theme [class*="border-slate-900"],
+.fleet-theme [class*="border-slate-800"],
+.fleet-theme [class*="border-slate-700"] {
+  border-color: #dedee3 !important;
+}
+
+.fleet-theme [class*="text-slate-100"],
+.fleet-theme [class*="text-slate-200"] {
+  color: #1d1d1f !important;
+}
+
+.fleet-theme [class*="text-slate-300"] {
+  color: #424245 !important;
+}
+
+.fleet-theme [class*="text-slate-400"],
+.fleet-theme [class*="text-slate-500"] {
+  color: #6e6e73 !important;
+}
+
+.fleet-theme .text-white:not(button *) {
+  color: #1d1d1f !important;
+}
+
+.fleet-theme [class*="text-cyan-300"],
+.fleet-theme [class*="text-cyan-400"] {
+  color: #0071e3 !important;
+}
+
+.fleet-theme [class*="text-indigo-300"],
+.fleet-theme [class*="text-indigo-400"] {
+  color: #5856d6 !important;
+}
+
+.fleet-theme [class*="text-emerald-300"],
+.fleet-theme [class*="text-emerald-400"] {
+  color: #16804a !important;
+}
+
+.fleet-theme [class*="text-amber-300"],
+.fleet-theme [class*="text-amber-400"] {
+  color: #946200 !important;
+}
+
+.fleet-theme [class*="text-rose-300"],
+.fleet-theme [class*="text-rose-400"] {
+  color: #c43232 !important;
+}
+
+.fleet-theme [class*="text-purple-300"],
+.fleet-theme [class*="text-purple-400"] {
+  color: #7651b5 !important;
+}
+
+.fleet-theme input,
+.fleet-theme select,
+.fleet-theme textarea {
+  color-scheme: light;
+}
+
+.fleet-theme :focus-visible {
+  outline: 2px solid #0071e3;
+  outline-offset: 2px;
+}
+
+.fleet-theme .fixed.inset-0[class*="bg-slate-950"] {
+  background-color: rgb(29 29 31 / 0.4) !important;
+}
