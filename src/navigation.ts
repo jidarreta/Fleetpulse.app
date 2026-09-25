@@ -1,6 +1,7 @@
 export type AppView =
   | 'COMMAND_CENTER'
   | 'MECHANIC_COPILOT'
+  | 'TRUCK_GAME'
   | 'HYBRID_ML'
   | 'AI_6_PHASES'
   | 'DEPLOYMENT_TOPOLOGY'

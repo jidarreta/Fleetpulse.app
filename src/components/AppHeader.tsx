@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   Activity, ArrowDownToLine, BrainCircuit, Check, ChevronDown, Cpu,
-  LayoutDashboard, Layers, LogOut, Radio, Wrench,
+  LayoutDashboard, Layers, LogOut, Radio, Truck, Wrench,
 } from 'lucide-react';
 import { User, UserRole } from '../types';
 import { AppView } from '../navigation';
@@ -100,6 +100,9 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         <button type="button" onClick={() => navigate('MECHANIC_COPILOT')} className={navClass(currentTab === 'MECHANIC_COPILOT')}>
           <Wrench className="h-4 w-4" /> Work orders
           {pendingOrderCount > 0 && <span className="ml-0.5 rounded-full bg-rose-100 px-1.5 py-0.5 text-[10px] font-semibold text-rose-800">{pendingOrderCount}</span>}
+        </button>
+        <button type="button" onClick={() => navigate('TRUCK_GAME')} className={navClass(currentTab === 'TRUCK_GAME')}>
+          <Truck className="h-4 w-4" /> Truck game
         </button>
 
         <div className="relative">

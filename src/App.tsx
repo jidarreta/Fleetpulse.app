@@ -20,6 +20,7 @@ import { HybridMLArchitectureStudio } from './components/HybridMLArchitectureStu
 import { Phase4DeploymentTopologyStudio } from './components/Phase4DeploymentTopologyStudio';
 import FleetDiagnosticCard from './components/FleetDiagnosticCard';
 import { AppHeader } from './components/AppHeader';
+import { TruckWagonGame } from './components/TruckWagonGame';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { AuthPage } from './components/AuthPage';
 import { generateFleetPulseDocx } from './services/docxExport';
@@ -29,6 +30,7 @@ import { AppView } from './navigation';
 const pageCopy: Record<AppView, { section: string; title: string; description: string }> = {
   COMMAND_CENTER: { section: 'Operations', title: 'Fleet overview', description: 'A clear view of fleet health, vehicle alerts, and what needs attention next.' },
   MECHANIC_COPILOT: { section: 'Service', title: 'Work orders', description: 'Review repair priorities, inspect vehicle evidence, and track shop outcomes.' },
+  TRUCK_GAME: { section: 'Fleet break', title: 'Truck & wagon run', description: 'Pick up cargo, add wagons, and see how long a road train you can keep moving.' },
   HYBRID_ML: { section: 'AI & analytics', title: 'AI architecture', description: 'See how FleetPulse combines telemetry and machine learning to estimate risk.' },
   AI_6_PHASES: { section: 'AI & analytics', title: 'AI lifecycle', description: 'Explore the six phases behind FleetPulse’s design and operations.' },
   DEPLOYMENT_TOPOLOGY: { section: 'Platform', title: 'System architecture', description: 'Explore how FleetPulse services connect across the platform.' },
@@ -492,6 +494,8 @@ function FleetPulseApp() {
             onSubmitFeedback={handleSubmitFeedback}
           />
         )}
+
+        {currentTab === 'TRUCK_GAME' && <TruckWagonGame />}
 
         {currentTab === 'HYBRID_ML' && (
           <HybridMLArchitectureStudio vehicles={vehicles} />
