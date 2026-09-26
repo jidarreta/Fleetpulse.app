@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   INITIAL_VEHICLES,
   INITIAL_WORK_ORDERS,
@@ -21,11 +21,52 @@ import { Phase4DeploymentTopologyStudio } from './components/Phase4DeploymentTop
 import FleetDiagnosticCard from './components/FleetDiagnosticCard';
 import { AppHeader } from './components/AppHeader';
 import { TruckWagonGame } from './components/TruckWagonGame';
+import { AppErrorBoundary } from './components/AppErrorBoundary';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { AuthPage } from './components/AuthPage';
 import { generateFleetPulseDocx } from './services/docxExport';
 import { Activity, CheckCircle2, Radio } from 'lucide-react';
 import { AppView } from './navigation';
+import { PendingApiRequest, readLocalData, writeLocalData } from './services/localData';
+
+const STORAGE_KEYS = {
+  vehicles: 'fleetpulse_vehicles_v1',
+  workOrders: 'fleetpulse_work_orders_v1',
+  selectedVehicle: 'fleetpulse_selected_vehicle_v1',
+  currentTab: 'fleetpulse_current_tab_v1',
+  role: 'fleetpulse_role_override_v1',
+  pendingRequests: 'fleetpulse_pending_requests_v1',
+} as const;
+
+const validViews: AppView[] = [
+  'COMMAND_CENTER', 'MECHANIC_COPILOT', 'TRUCK_GAME', 'HYBRID_ML',
+  'AI_6_PHASES', 'DEPLOYMENT_TOPOLOGY', 'TELEMETRY_SIMULATOR', 'DIAGNOSTIC_CARD',
+];
+
+function loadVehicles(): VehicleRiskAssessment[] {
+  const saved = readLocalData<unknown>(STORAGE_KEYS.vehicles, null);
+  return Array.isArray(saved) && saved.every((item) => item && typeof item.vehicleId === 'string')
+    ? saved as VehicleRiskAssessment[]
+    : INITIAL_VEHICLES;
+}
+
+function loadWorkOrders(): WorkOrder[] {
+  const saved = readLocalData<unknown>(STORAGE_KEYS.workOrders, null);
+  return Array.isArray(saved) && saved.every((item) => item && typeof item.id === 'string' && typeof item.vehicleId === 'string')
+    ? saved as WorkOrder[]
+    : INITIAL_WORK_ORDERS;
+}
+
+function loadPendingRequests(): PendingApiRequest[] {
+  const saved = readLocalData<unknown>(STORAGE_KEYS.pendingRequests, []);
+  return Array.isArray(saved)
+    ? saved.filter((item): item is PendingApiRequest => Boolean(
+        item && typeof item.id === 'string' && typeof item.url === 'string' &&
+        (item.method === 'POST' || item.method === 'PATCH') && typeof item.body === 'string' &&
+        typeof item.requiresAuth === 'boolean' && typeof item.createdAt === 'string'
+      ))
+    : [];
+}
 
 const pageCopy: Record<AppView, { section: string; title: string; description: string }> = {
   COMMAND_CENTER: { section: 'Operations', title: 'Fleet overview', description: 'A clear view of fleet health, vehicle alerts, and what needs attention next.' },
@@ -41,25 +82,52 @@ const pageCopy: Record<AppView, { section: string; title: string; description: s
 function FleetPulseApp() {
   const { user, token, isAuthenticated, isLoading, logout } = useAuth();
 
-  const [vehicles, setVehicles] = useState<VehicleRiskAssessment[]>(INITIAL_VEHICLES);
-  const [workOrders, setWorkOrders] = useState<WorkOrder[]>(INITIAL_WORK_ORDERS);
+  const [vehicles, setVehicles] = useState<VehicleRiskAssessment[]>(loadVehicles);
+  const [workOrders, setWorkOrders] = useState<WorkOrder[]>(loadWorkOrders);
   const [inventory] = useState<InventoryPart[]>(INVENTORY_PARTS);
-  const [selectedVehicleId, setSelectedVehicleId] = useState<string>('FP-042');
-  const [currentTab, setCurrentTab] = useState<AppView>('COMMAND_CENTER');
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string>(() => {
+    const saved = readLocalData<unknown>(STORAGE_KEYS.selectedVehicle, null);
+    return typeof saved === 'string' ? saved : 'FP-042';
+  });
+  const [currentTab, setCurrentTab] = useState<AppView>(() => {
+    const saved = readLocalData<string>(STORAGE_KEYS.currentTab, 'COMMAND_CENTER');
+    return validViews.includes(saved as AppView) ? saved as AppView : 'COMMAND_CENTER';
+  });
   const [isExporting, setIsExporting] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [roleOverride, setRoleOverride] = useState<UserRole | null>(null);
+  const [roleOverride, setRoleOverride] = useState<UserRole | null>(() => {
+    const saved = readLocalData<string | null>(STORAGE_KEYS.role, null);
+    return saved === 'FLEET_MANAGER' || saved === 'MECHANIC' || saved === 'ADMINISTRATOR' ? saved : null;
+  });
+  const [pendingRequests, setPendingRequests] = useState<PendingApiRequest[]>(loadPendingRequests);
+  const [storageError, setStorageError] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<'loading' | 'online' | 'offline'>('loading');
+  const [syncAttempt, setSyncAttempt] = useState(0);
+  const priorRole = useRef(user?.role);
 
   // Sync tab with user role upon login
   useEffect(() => {
-    if (user) {
+    if (user && !priorRole.current) {
       if (user.role === 'OPERATIONS_MANAGER') {
         setCurrentTab('COMMAND_CENTER');
       } else if (user.role === 'FLEET_MECHANIC') {
         setCurrentTab('MECHANIC_COPILOT');
       }
     }
+    priorRole.current = user?.role;
   }, [user?.role]);
+
+  useEffect(() => {
+    const saved = [
+      writeLocalData(STORAGE_KEYS.vehicles, vehicles),
+      writeLocalData(STORAGE_KEYS.workOrders, workOrders),
+      writeLocalData(STORAGE_KEYS.selectedVehicle, selectedVehicleId),
+      writeLocalData(STORAGE_KEYS.currentTab, currentTab),
+      writeLocalData(STORAGE_KEYS.role, roleOverride),
+      writeLocalData(STORAGE_KEYS.pendingRequests, pendingRequests),
+    ].every(Boolean);
+    setStorageError(!saved);
+  }, [vehicles, workOrders, selectedVehicleId, currentTab, roleOverride, pendingRequests]);
 
   // Map AuthRole to UserRole with optional override
   const currentUserRole: UserRole =
@@ -77,29 +145,57 @@ function FleetPulseApp() {
 
   // Sync with Express backend API & Server-Sent Events (SSE)
   useEffect(() => {
-    // 1. Fetch initial vehicles
-    fetch('/api/v1/vehicles')
-      .then((res) => (res.ok ? res.json() : null))
-      .then((json) => {
-        if (json && json.success && Array.isArray(json.data)) {
-          setVehicles(json.data);
+    let active = true;
+    setSyncStatus('loading');
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 12000);
+    const syncInitialData = async () => {
+      const unsynced: PendingApiRequest[] = [];
+      for (const request of pendingRequests) {
+        try {
+          const response = await fetch(request.url, {
+            method: request.method,
+            signal: controller.signal,
+            headers: {
+              'Content-Type': 'application/json',
+              ...(request.requiresAuth && token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: request.body,
+          });
+          if (!response.ok) throw new Error(`Saved update returned ${response.status}.`);
+        } catch {
+          unsynced.push(request);
         }
-      })
-      .catch(() => {
-        // Fallback to local initial dataset if server is warming up
-      });
+      }
+      if (!active) return;
+      setPendingRequests(unsynced);
+      if (unsynced.length) {
+        setSyncStatus('offline');
+        return;
+      }
 
-    // 2. Fetch initial work orders
-    fetch('/api/v1/work-orders')
-      .then((res) => (res.ok ? res.json() : null))
-      .then((json) => {
-        if (json && json.success && Array.isArray(json.data)) {
-          setWorkOrders(json.data);
-        }
-      })
-      .catch(() => {
-        // Fallback
-      });
+      const results = await Promise.allSettled([
+        fetch('/api/v1/vehicles', { signal: controller.signal }).then(async (res) => {
+          if (!res.ok) throw new Error(`Vehicle sync failed (${res.status})`);
+          return res.json();
+        }),
+        fetch('/api/v1/work-orders', { signal: controller.signal }).then(async (res) => {
+          if (!res.ok) throw new Error(`Work order sync failed (${res.status})`);
+          return res.json();
+        }),
+      ]);
+      if (!active) return;
+      let failed = false;
+      const [vehicleResult, orderResult] = results;
+      if (vehicleResult.status === 'fulfilled' && vehicleResult.value?.success && Array.isArray(vehicleResult.value.data)) {
+        setVehicles(vehicleResult.value.data);
+      } else failed = true;
+      if (orderResult.status === 'fulfilled' && orderResult.value?.success && Array.isArray(orderResult.value.data)) {
+        setWorkOrders(orderResult.value.data);
+      } else failed = true;
+      setSyncStatus(failed ? 'offline' : 'online');
+    };
+    void syncInitialData().finally(() => window.clearTimeout(timeout));
 
     // 3. Connect to live telemetry & work order SSE stream
     let eventSource: EventSource | null = null;
@@ -159,11 +255,14 @@ function FleetPulseApp() {
     }
 
     return () => {
+      active = false;
+      controller.abort();
+      window.clearTimeout(timeout);
       if (eventSource) {
         eventSource.close();
       }
     };
-  }, []);
+  }, [syncAttempt, token]);
 
   const handleRoleChange = (role: UserRole) => {
     setRoleOverride(role);
@@ -174,6 +273,38 @@ function FleetPulseApp() {
     } else {
       showToast('Active Role: Administrator — Full system governance, pipeline DLQ inspection, and raw CAN bus injection enabled.');
     }
+  };
+
+  const retryFleetSync = () => setSyncAttempt((attempt) => attempt + 1);
+
+  useEffect(() => {
+    const retryWhenOnline = () => retryFleetSync();
+    window.addEventListener('online', retryWhenOnline);
+    return () => window.removeEventListener('online', retryWhenOnline);
+  }, []);
+
+  const sendOrQueueRequest = (
+    request: Omit<PendingApiRequest, 'id' | 'createdAt'>,
+    failureMessage: string,
+  ) => {
+    fetch(request.url, {
+      method: request.method,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(request.requiresAuth && token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: request.body,
+    }).then((res) => {
+      if (!res.ok) throw new Error(`Request failed (${res.status}).`);
+    }).catch(() => {
+      setPendingRequests((previous) => [...previous, {
+        ...request,
+        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        createdAt: new Date().toISOString(),
+      }]);
+      setSyncStatus('offline');
+      showToast(failureMessage);
+    });
   };
 
   // Export to authentic .docx file
@@ -265,20 +396,15 @@ function FleetPulseApp() {
     };
 
     // Update local state immediately
-    setWorkOrders([newOrder, ...workOrders]);
+    setWorkOrders((previous) => [newOrder, ...previous]);
     setVehicles((prev) =>
       prev.map((item) => (item.vehicleId === vehicleId ? { ...item, activeWorkOrderId: newId } : item))
     );
 
-    // Call Backend API with JWT Auth Token
-    fetch('/api/v1/work-orders', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify(newOrder),
-    }).catch(() => {});
+    sendOrQueueRequest(
+      { url: '/api/v1/work-orders', method: 'POST', body: JSON.stringify(newOrder), requiresAuth: true },
+      `Work order ${newId} is saved here and queued to sync.`,
+    );
 
     showToast(`Recommendation ${newId} sent for mechanic verification. Parts are not reserved until approved.`);
   };
@@ -286,15 +412,10 @@ function FleetPulseApp() {
   const handleUpdateWorkOrder = (updated: WorkOrder) => {
     setWorkOrders((prev) => prev.map((w) => (w.id === updated.id ? updated : w)));
 
-    // Sync with backend API
-    fetch(`/api/v1/work-orders/${updated.id}`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify(updated),
-    }).catch(() => {});
+    sendOrQueueRequest(
+      { url: `/api/v1/work-orders/${updated.id}`, method: 'PATCH', body: JSON.stringify(updated), requiresAuth: true },
+      `Work order ${updated.id} is saved here and queued to sync.`,
+    );
 
     showToast(`Work Order ${updated.id} status changed to ${updated.status}.`);
   };
@@ -323,32 +444,30 @@ function FleetPulseApp() {
       )
     );
 
-    // Sync with backend API
-    fetch(`/api/v1/work-orders/${workOrderId}`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify({
+    sendOrQueueRequest(
+      {
+        url: `/api/v1/work-orders/${workOrderId}`,
+        method: 'PATCH',
+        requiresAuth: true,
+        body: JSON.stringify({
         status: 'COMPLETED',
         closedLoopFeedback: feedback,
       }),
-    }).catch(() => {});
+      },
+      'Validation is saved here and queued to sync.',
+    );
 
     showToast(
-      `Ground-truth tagged: ${feedback.tag === 'FAILURE_CONFIRMED' ? 'Failure Confirmed' : 'False Positive'}. Synced to Arize ML retraining pool!`
+      `Ground-truth tagged: ${feedback.tag === 'FAILURE_CONFIRMED' ? 'Failure Confirmed' : 'False Positive'}.`
     );
   };
 
   // Telemetry stream ingestion handler (simulates FastAPI + ONNX runtime evaluation)
   const handleIngestTelemetry = (packet: TelemetryPacket) => {
-    // Send to backend API
-    fetch('/api/v1/telemetry', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(packet),
-    }).catch(() => {});
+    sendOrQueueRequest(
+      { url: '/api/v1/telemetry', method: 'POST', body: JSON.stringify(packet), requiresAuth: false },
+      'Telemetry is saved here and queued to sync.',
+    );
 
     setVehicles((prev) =>
       prev.map((v) => {
@@ -411,18 +530,20 @@ function FleetPulseApp() {
       })
     );
 
-    showToast(`Telemetry ingested for ${packet.vehicle_id}: evaluated via ONNX runtime.`);
+    showToast(`Telemetry ingested locally for ${packet.vehicle_id}.`);
   };
 
   const refreshFleetData = async () => {
     try {
       const res = await fetch('/api/v1/vehicles');
-      if (res.ok) {
-        const json = await res.json();
-        if (json.success && Array.isArray(json.data)) setVehicles(json.data);
-      }
+      if (!res.ok) throw new Error(`Fleet refresh failed (${res.status}).`);
+      const json = await res.json();
+      if (!json.success || !Array.isArray(json.data)) throw new Error('Fleet refresh returned invalid data.');
+      setVehicles(json.data);
+      setSyncStatus(pendingRequests.length ? 'offline' : 'online');
     } catch {
-      // Keep the latest local telemetry state if the backend is temporarily unavailable.
+      setSyncStatus('offline');
+      showToast('Could not refresh fleet data. Your saved data is still available.');
     }
   };
 
@@ -459,14 +580,21 @@ function FleetPulseApp() {
 
       {/* Toast Notification Banner */}
       {toastMessage && (
-        <div className="fixed top-24 right-6 z-50 bg-slate-900 border border-slate-700 text-slate-200 text-xs px-4 py-3 rounded-xl shadow-2xl flex items-center space-x-2.5 animate-in slide-in-from-top-2">
+        <div className="fixed left-4 right-4 top-24 z-50 flex items-center space-x-2.5 rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-xs text-slate-200 shadow-2xl animate-in slide-in-from-top-2 sm:left-auto sm:right-6 sm:max-w-md">
           <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
           <span>{toastMessage}</span>
         </div>
       )}
 
       {/* Main Container */}
-      <main className="mx-auto w-full max-w-[1440px] flex-1 px-5 py-8 sm:px-8 lg:px-10">
+      <main className="mx-auto w-full max-w-[1440px] flex-1 px-4 py-6 sm:px-8 sm:py-8 lg:px-10">
+        {syncStatus !== 'online' && (
+          <div className={`mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-sm ${syncStatus === 'loading' ? 'border-blue-200 bg-blue-50 text-blue-800' : 'border-amber-200 bg-amber-50 text-amber-900'}`} role="status" aria-live="polite">
+            <span>{syncStatus === 'loading' ? `Syncing fleet data${pendingRequests.length ? ` and ${pendingRequests.length} saved change${pendingRequests.length === 1 ? '' : 's'}` : ''}… Your saved data remains available.` : pendingRequests.length ? `${pendingRequests.length} saved change${pendingRequests.length === 1 ? '' : 's'} waiting to sync. Your data is saved on this device.` : 'Could not reach the fleet service. Showing saved data on this device.'}</span>
+            {syncStatus === 'offline' && <button type="button" onClick={retryFleetSync} className="rounded-full border border-amber-300 px-3 py-1.5 text-xs font-semibold hover:bg-amber-100">Try again</button>}
+          </div>
+        )}
+        {storageError && <p role="alert" className="mb-5 rounded-xl border border-rose-300 bg-rose-50 px-4 py-3 text-sm text-rose-900">This browser could not save your latest changes. Check that local storage is available and not full.</p>}
         <div className="mb-8 border-b border-slate-200 pb-6">
           <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-blue-700">FleetPulse <span className="mx-1 text-slate-400">/</span> {page.section}</p>
           <h1 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">{page.title}</h1>
@@ -558,8 +686,10 @@ function FleetPulseApp() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <FleetPulseApp />
+      <AuthProvider>
+      <AppErrorBoundary>
+        <FleetPulseApp />
+      </AppErrorBoundary>
     </AuthProvider>
   );
 }

@@ -36,7 +36,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   const isAIActive = currentTab === 'HYBRID_ML' || currentTab === 'AI_6_PHASES';
   const isPlatformActive = currentTab === 'DEPLOYMENT_TOPOLOGY' || currentTab === 'TELEMETRY_SIMULATOR';
   const navClass = (active: boolean) =>
-    `inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+    `inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-2 text-xs font-medium transition-colors sm:gap-2 sm:px-4 sm:text-sm ${
       active ? 'bg-blue-50 text-blue-800 shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
     }`;
   const dropdownBaseClass = 'absolute z-50 w-64 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl shadow-slate-900/10';
@@ -45,13 +45,13 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
 
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-[1440px] items-center justify-between gap-4 px-5 py-3 sm:px-8">
-        <button type="button" onClick={() => navigate('COMMAND_CENTER')} className="flex shrink-0 items-center gap-3 rounded-xl text-left" aria-label="FleetPulse home">
-          <span className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-blue-600 text-white shadow-md shadow-blue-600/15">
+      <div className="mx-auto flex max-w-[1440px] items-center justify-between gap-2 px-3 py-3 sm:gap-4 sm:px-8">
+        <button type="button" onClick={() => navigate('COMMAND_CENTER')} className="flex shrink-0 items-center gap-2 rounded-xl text-left sm:gap-3" aria-label="FleetPulse home">
+          <span className="flex h-9 w-9 items-center justify-center rounded-[14px] bg-blue-600 text-white shadow-md shadow-blue-600/15 sm:h-10 sm:w-10">
             <Activity className="h-5 w-5" />
           </span>
           <span>
-            <span className="block text-base font-semibold tracking-tight text-slate-900">FleetPulse<span className="text-blue-600">.ai</span></span>
+            <span className="block text-sm font-semibold tracking-tight text-slate-900 sm:text-base">FleetPulse<span className="text-blue-600">.ai</span></span>
             <span className="block text-[11px] text-slate-500">Fleet operations</span>
           </span>
         </button>
@@ -93,7 +93,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         </div>
       </div>
 
-      <nav aria-label="Main navigation" className="mx-auto flex max-w-[1440px] flex-wrap gap-1 px-5 pb-3 sm:px-8">
+      <nav aria-label="Main navigation" className="mx-auto flex max-w-[1440px] flex-wrap gap-1 px-3 pb-3 sm:px-8">
         <button type="button" onClick={() => navigate('COMMAND_CENTER')} className={navClass(currentTab === 'COMMAND_CENTER')}>
           <LayoutDashboard className="h-4 w-4" /> Fleet
         </button>

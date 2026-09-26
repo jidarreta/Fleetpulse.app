@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   HybridTabularFeatures,
   HybridInferenceResponse,
@@ -238,6 +238,8 @@ export const HybridMLArchitectureStudio: React.FC<HybridMLArchitectureStudioProp
   );
   const [inferenceResult, setInferenceResult] = useState<HybridInferenceResponse | null>(null);
   const [isInferring, setIsInferring] = useState(false);
+  const [inferenceError, setInferenceError] = useState<string | null>(null);
+  const inferenceRunId = useRef(0);
   const [activeTab, setActiveTab] = useState<'INFERENCE_STUDIO' | 'ARCHITECTURE_DIAGRAM' | 'PYTHON_CODE'>(
     'INFERENCE_STUDIO'
   );
@@ -261,7 +263,9 @@ export const HybridMLArchitectureStudio: React.FC<HybridMLArchitectureStudioProp
   };
 
   const runInference = async (featPayload: HybridTabularFeatures) => {
+    const runId = ++inferenceRunId.current;
     setIsInferring(true);
+    setInferenceError(null);
     try {
       const res = await fetch('/api/v1/ml/infer-hybrid', {
         method: 'POST',
@@ -269,13 +273,14 @@ export const HybridMLArchitectureStudio: React.FC<HybridMLArchitectureStudioProp
         body: JSON.stringify({ tabular_features: featPayload }),
       });
 
-      if (res.ok) {
-        const json = await res.json();
-        if (json.success && json.data) {
-          setInferenceResult(json.data);
-        }
-      }
-    } catch {
+      if (!res.ok) throw new Error(`Inference service returned ${res.status}.`);
+      const json = await res.json();
+      if (!json.success || !json.data) throw new Error('Inference service returned an invalid response.');
+      if (runId !== inferenceRunId.current) return;
+      setInferenceResult(json.data);
+    } catch (error) {
+      if (runId !== inferenceRunId.current) return;
+      setInferenceError(error instanceof Error ? error.message : 'Inference service is unavailable. Showing a local estimate.');
       // Fallback local calculation
       const lgbm = featPayload.coolant_temp_14d_avg > 94 || featPayload.battery_voltage_14d_min < 11.5 ? 88.4 : 15.2;
       const lstm = featPayload.coolant_temp_14d_max > 105 || featPayload.battery_voltage_rate_of_change < -0.05 ? 78.5 : 12.0;
@@ -299,7 +304,7 @@ export const HybridMLArchitectureStudio: React.FC<HybridMLArchitectureStudioProp
         },
       });
     } finally {
-      setIsInferring(false);
+      if (runId === inferenceRunId.current) setIsInferring(false);
     }
   };
 
@@ -782,6 +787,9 @@ export const HybridMLArchitectureStudio: React.FC<HybridMLArchitectureStudioProp
                   Score = 0.6·P(A) + 0.4·P(B)
                 </span>
               </div>
+
+              {inferenceError && <p role="status" className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">{inferenceError} A local estimate is shown until the service is available.</p>}
+              {isInferring && <p role="status" className="text-xs text-slate-500">Calculating the latest risk score…</p>}
 
               {inferenceResult ? (
                 <div className="space-y-4">

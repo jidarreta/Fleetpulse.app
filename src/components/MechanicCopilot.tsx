@@ -54,6 +54,7 @@ export const MechanicCopilot: React.FC<MechanicCopilotProps> = ({
   const [isSuccessToast, setIsSuccessToast] = useState(false);
   const [tabletMode, setTabletMode] = useState<'DESKTOP' | 'TABLET_FRAME'>('DESKTOP');
   const [showClosureModal, setShowClosureModal] = useState(false);
+  const [feedbackError, setFeedbackError] = useState<string | null>(null);
 
   const currentOrder =
     workOrders.find((w) => w.id === selectedOrderId) || workOrders[0];
@@ -77,12 +78,21 @@ export const MechanicCopilot: React.FC<MechanicCopilotProps> = ({
   const handleFeedbackSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!currentOrder) return;
+    if (rootCause.trim().length < 3) {
+      setFeedbackError('Enter a verified root cause with at least 3 characters.');
+      return;
+    }
+    if (mechanicId.trim().length < 3) {
+      setFeedbackError('Enter a mechanic ID or service bay.');
+      return;
+    }
+    setFeedbackError(null);
 
     onSubmitFeedback(currentOrder.id, {
       tag: feedbackTag,
-      rootCauseIdentified: rootCause || 'Impeller cavitation & thermostat seal erosion confirmed under pressure test.',
-      mechanicNotes: mechanicNotes || 'Verified telemetry anomaly on physical vehicle CAN bus test bench.',
-      mechanicId: mechanicId,
+      rootCauseIdentified: rootCause.trim(),
+      mechanicNotes: mechanicNotes.trim(),
+      mechanicId: mechanicId.trim(),
     });
 
     setShowClosureModal(false);
@@ -463,12 +473,13 @@ export const MechanicCopilot: React.FC<MechanicCopilotProps> = ({
                   </div>
                 ) : (
                   <form onSubmit={handleFeedbackSubmit} className="space-y-4">
+                    {feedbackError && <p role="alert" className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-xs text-rose-800">{feedbackError}</p>}
                     {/* Tag Choice */}
                     <div>
                       <label className="block text-xs font-semibold text-slate-300 mb-2">
                         Step 1: Diagnostic Confirmation Result
                       </label>
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <button
                           type="button"
                           onClick={() => setFeedbackTag('FAILURE_CONFIRMED')}
@@ -524,6 +535,8 @@ export const MechanicCopilot: React.FC<MechanicCopilotProps> = ({
                         <input
                           type="text"
                           required
+                          aria-label="Verified physical root cause"
+                          minLength={3}
                           placeholder="e.g. Impeller cavitation & leaking water pump gasket"
                           value={rootCause}
                           onChange={(e) => setRootCause(e.target.value)}
@@ -537,6 +550,9 @@ export const MechanicCopilot: React.FC<MechanicCopilotProps> = ({
                         </label>
                         <input
                           type="text"
+                          required
+                          aria-label="Mechanic tag and bay ID"
+                          minLength={3}
                           value={mechanicId}
                           onChange={(e) => setMechanicId(e.target.value)}
                           className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono"
@@ -639,12 +655,13 @@ export const MechanicCopilot: React.FC<MechanicCopilotProps> = ({
             </p>
 
             <form onSubmit={handleFeedbackSubmit} className="space-y-4">
+              {feedbackError && <p role="alert" className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-xs text-rose-800">{feedbackError}</p>}
               {/* Mandatory Validation Toggle */}
               <div>
                 <label className="block text-xs font-bold text-slate-200 mb-2">
                   Mandatory Validation Result <span className="text-rose-400">*</span>
                 </label>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <button
                     type="button"
                     onClick={() => setFeedbackTag('FAILURE_CONFIRMED')}
@@ -699,6 +716,8 @@ export const MechanicCopilot: React.FC<MechanicCopilotProps> = ({
                 <input
                   type="text"
                   required
+                  aria-label="Verified physical root cause"
+                  minLength={3}
                   placeholder="e.g. Impeller cavitation & leaking water pump seal"
                   value={rootCause}
                   onChange={(e) => setRootCause(e.target.value)}
@@ -727,6 +746,9 @@ export const MechanicCopilot: React.FC<MechanicCopilotProps> = ({
                 </label>
                 <input
                   type="text"
+                  required
+                  aria-label="Mechanic ID and service bay"
+                  minLength={3}
                   value={mechanicId}
                   onChange={(e) => setMechanicId(e.target.value)}
                   className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono"

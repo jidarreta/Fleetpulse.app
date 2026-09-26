@@ -44,11 +44,17 @@ export function Phase4DeploymentTopologyStudio() {
   });
   const [burstCount, setBurstCount] = useState(0);
   const [burstLoading, setBurstLoading] = useState(false);
+  const [gatewayLoading, setGatewayLoading] = useState(true);
+  const [gatewayError, setGatewayError] = useState<string | null>(null);
+  const [burstError, setBurstError] = useState<string | null>(null);
 
   // Fetch live gateway headers from backend
   const checkGatewayHealth = async () => {
+    setGatewayLoading(true);
+    setGatewayError(null);
     try {
       const res = await fetch('/api/health');
+      if (!res.ok && res.status !== 429) throw new Error(`Health check returned ${res.status}.`);
       const limit = res.headers.get('x-ratelimit-limit') || '180';
       const remaining = res.headers.get('x-ratelimit-remaining') || '178';
       const gateway = res.headers.get('x-ingress-gateway') || 'AWS-API-Gateway-v2-Private-VPC-Link';
@@ -58,8 +64,10 @@ export function Phase4DeploymentTopologyStudio() {
         gateway,
         status: res.status === 429 ? 'RATE_LIMITED' : 'ACTIVE_PROTECTED',
       });
-    } catch {
-      // ignore
+    } catch (error) {
+      setGatewayError(error instanceof Error ? error.message : 'Could not reach the gateway health service.');
+    } finally {
+      setGatewayLoading(false);
     }
   };
 
@@ -69,16 +77,22 @@ export function Phase4DeploymentTopologyStudio() {
 
   const handleTestBurst = async () => {
     setBurstLoading(true);
+    setBurstError(null);
     let rem = parseInt(rateLimitInfo.remaining, 10);
+    let successfulRequests = 0;
+    let failedRequests = 0;
     for (let i = 0; i < 5; i++) {
       try {
         const res = await fetch('/api/health');
+        if (!res.ok && res.status !== 429) throw new Error(`Gateway request returned ${res.status}.`);
         rem = parseInt(res.headers.get('x-ratelimit-remaining') || `${rem - 1}`, 10);
+        successfulRequests += 1;
       } catch {
-        // ignore
+        failedRequests += 1;
       }
     }
-    setBurstCount((prev) => prev + 5);
+    if (failedRequests) setBurstError(`${failedRequests} of 5 gateway requests could not be completed. Please try again.`);
+    setBurstCount((prev) => prev + successfulRequests);
     setRateLimitInfo((prev) => ({
       ...prev,
       remaining: Math.max(0, rem).toString(),
@@ -559,6 +573,8 @@ CMD ["node", "dist/server.cjs"]`;
             </div>
 
             <div className="space-y-3">
+              {gatewayError && <p role="alert" className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-xs text-rose-800">{gatewayError} Header values below may be the last saved response.</p>}
+              {burstError && <p role="alert" className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">{burstError}</p>}
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
                   <span className="text-slate-400 text-[10px] uppercase font-mono block">Max Policy</span>
@@ -591,10 +607,11 @@ CMD ["node", "dist/server.cjs"]`;
                 </button>
                 <button
                   onClick={checkGatewayHealth}
+                  disabled={gatewayLoading}
                   className="p-2 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 text-slate-300 transition-all cursor-pointer"
                   title="Refresh Headers"
                 >
-                  <RefreshCw className="w-3.5 h-3.5" />
+                  <RefreshCw className={`w-3.5 h-3.5 ${gatewayLoading ? 'animate-spin' : ''}`} />
                 </button>
               </div>
             </div>

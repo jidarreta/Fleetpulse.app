@@ -45,15 +45,28 @@ export const TelemetrySimulator: React.FC<TelemetrySimulatorProps> = ({
   const [fastApiVehicleUuid, setFastApiVehicleUuid] = useState<string>('7b1e8472-8822-4a0b-990a-6623d387879e');
   const [fastApiResponse, setFastApiResponse] = useState<any | null>(null);
   const [fastApiLoading, setFastApiLoading] = useState<boolean>(false);
+  const [fastApiError, setFastApiError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const handleFetchFastApiRiskScore = async () => {
+    const isFleetId = /^FP-\d{3}$/i.test(fastApiVehicleUuid.trim());
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(fastApiVehicleUuid.trim());
+    if (!isFleetId && !isUuid) {
+      setFastApiError('Enter a valid fleet asset ID (for example, FP-042) or UUID.');
+      setFastApiResponse(null);
+      return;
+    }
     setFastApiLoading(true);
+    setFastApiError(null);
     try {
       const res = await fetch(`/api/v1/vehicles/${fastApiVehicleUuid}/risk-score`);
+      if (!res.ok) throw new Error(`Risk service returned ${res.status}.`);
       const data = await res.json();
       setFastApiResponse(data);
-    } catch (err: any) {
-      setFastApiResponse({ error: err.message || 'Failed to fetch risk score' });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to fetch risk score.';
+      setFastApiError(message);
+      setFastApiResponse({ error: message });
     } finally {
       setFastApiLoading(false);
     }
@@ -128,12 +141,26 @@ export const TelemetrySimulator: React.FC<TelemetrySimulatorProps> = ({
 
   const handleSendPacket = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsProcessing(true);
 
     const parsedCoolant = parseFloat(coolantTemp.toString());
     const parsedVoltage = parseFloat(batteryVoltage.toString());
     const parsedRpm = parseInt(engineRpm.toString(), 10);
     const parsedOil = parseFloat(oilPressure.toString());
+
+    if (![parsedCoolant, parsedVoltage, parsedRpm, parsedOil, rateOfChangeCoolant].every(Number.isFinite)) {
+      setFormError('Enter a number for each telemetry reading before sending.');
+      return;
+    }
+    if (!Number.isInteger(parsedRpm)) {
+      setFormError('Engine RPM must be a whole number.');
+      return;
+    }
+    if (errorCodes.length > 500) {
+      setFormError('Diagnostic codes must be 500 characters or fewer.');
+      return;
+    }
+    setFormError(null);
+    setIsProcessing(true);
 
     // Step 1: Ingestion & Validation Logic (Apache Flink Pipeline Simulation)
     let validationStatus: 'VALIDATED' | 'QUARANTINED_DLQ' | 'SENSOR_NOISE_SMOOTHED' = 'VALIDATED';
@@ -386,10 +413,13 @@ export const TelemetrySimulator: React.FC<TelemetrySimulatorProps> = ({
             </p>
           </div>
 
-          <form onSubmit={handleSendPacket} className="space-y-4">
+          <form onSubmit={handleSendPacket} className="space-y-4" noValidate>
+            {formError && <p role="alert" className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-xs text-rose-800">{formError}</p>}
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">Target Asset ID</label>
               <select
+                required
+                aria-label="Target asset ID"
                 value={selectedVehicleId}
                 onChange={(e) => setSelectedVehicleId(e.target.value)}
                 className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono"
@@ -402,7 +432,7 @@ export const TelemetrySimulator: React.FC<TelemetrySimulatorProps> = ({
               </select>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1">
                   Coolant Temp (°C) [-40 to 150]
@@ -411,6 +441,7 @@ export const TelemetrySimulator: React.FC<TelemetrySimulatorProps> = ({
                   type="number"
                   step="0.1"
                   required
+                  aria-label="Coolant temperature in Celsius"
                   value={coolantTemp}
                   onChange={(e) => setCoolantTemp(parseFloat(e.target.value))}
                   className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-cyan-500"
@@ -425,6 +456,7 @@ export const TelemetrySimulator: React.FC<TelemetrySimulatorProps> = ({
                   type="number"
                   step="0.1"
                   required
+                  aria-label="Battery voltage"
                   value={batteryVoltage}
                   onChange={(e) => setBatteryVoltage(parseFloat(e.target.value))}
                   className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-cyan-500"
@@ -432,7 +464,7 @@ export const TelemetrySimulator: React.FC<TelemetrySimulatorProps> = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1">
                   Engine RPM [0 to 8000]
@@ -441,6 +473,7 @@ export const TelemetrySimulator: React.FC<TelemetrySimulatorProps> = ({
                   type="number"
                   required
                   value={engineRpm}
+                  aria-label="Engine RPM"
                   onChange={(e) => setEngineRpm(parseInt(e.target.value, 10))}
                   className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-cyan-500"
                 />
@@ -454,6 +487,7 @@ export const TelemetrySimulator: React.FC<TelemetrySimulatorProps> = ({
                   type="number"
                   step="0.1"
                   required
+                  aria-label="Oil pressure in PSI"
                   value={oilPressure}
                   onChange={(e) => setOilPressure(parseFloat(e.target.value))}
                   className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-cyan-500"
@@ -473,6 +507,7 @@ export const TelemetrySimulator: React.FC<TelemetrySimulatorProps> = ({
                 type="number"
                 step="0.1"
                 required
+                aria-label="Thermal gradient in degrees Celsius per second"
                 value={rateOfChangeCoolant}
                 onChange={(e) => setRateOfChangeCoolant(parseFloat(e.target.value))}
                 className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-cyan-500"
@@ -485,6 +520,8 @@ export const TelemetrySimulator: React.FC<TelemetrySimulatorProps> = ({
               </label>
               <input
                 type="text"
+                maxLength={500}
+                aria-label="Diagnostic trouble codes"
                 placeholder="Comma separated SPN / FMI fault codes"
                 value={errorCodes}
                 onChange={(e) => setErrorCodes(e.target.value)}
@@ -669,6 +706,8 @@ export const TelemetrySimulator: React.FC<TelemetrySimulatorProps> = ({
           </div>
         </div>
 
+        {fastApiError && <p role="alert" className="mb-4 rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-xs text-rose-800">{fastApiError} Try again when the risk service is available.</p>}
+
         {/* Input bar */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-3 mb-4">
           <div className="md:col-span-8">
@@ -678,6 +717,8 @@ export const TelemetrySimulator: React.FC<TelemetrySimulatorProps> = ({
             <div className="flex items-center space-x-2">
               <input
                 type="text"
+                aria-label="Vehicle asset ID or UUID"
+                autoComplete="off"
                 value={fastApiVehicleUuid}
                 onChange={(e) => setFastApiVehicleUuid(e.target.value)}
                 className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs font-mono text-cyan-300 focus:outline-none focus:ring-1 focus:ring-indigo-500"

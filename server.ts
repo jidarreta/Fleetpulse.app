@@ -830,7 +830,19 @@ async function startServer() {
     authenticateJWT,
     requireRoles(['FLEET_MECHANIC', 'OPERATIONS_MANAGER']),
     (req: AuthRequest, res: Response) => {
-      const { vehicleId, primarySubsystem, priority, scheduledShopDate, assignedMechanic, partsRequired, notes } = req.body;
+      const { id: requestedId, vehicleId, primarySubsystem, priority, scheduledShopDate, assignedMechanic, partsRequired, notes } = req.body;
+
+      // Use a client-generated ID when supplied so an offline retry cannot create duplicates.
+      const clientOrderId = typeof requestedId === 'string' && /^WO-[A-Z0-9-]{1,32}$/i.test(requestedId)
+        ? requestedId
+        : undefined;
+      if (clientOrderId) {
+        const existingOrder = workOrders.find((order) => order.id === clientOrderId);
+        if (existingOrder) {
+          res.status(200).json({ success: true, data: existingOrder, message: 'Work order already exists.' });
+          return;
+        }
+      }
 
       const vehicle = vehicles.find((v) => v.vehicleId === vehicleId);
       if (!vehicle) {
@@ -846,7 +858,7 @@ async function startServer() {
         return;
       }
 
-      const newId = `WO-${Math.floor(1000 + Math.random() * 9000)}`;
+      const newId = clientOrderId || `WO-${Math.floor(1000 + Math.random() * 9000)}`;
       const newOrder: WorkOrder = {
         id: newId,
         vehicleId: vehicle.vehicleId,

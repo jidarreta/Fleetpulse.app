@@ -29,27 +29,33 @@ export const AuthPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      setErrorMsg('Enter a valid email address.');
+      return;
+    }
+    if (!password) {
+      setErrorMsg('Enter your password.');
+      return;
+    }
     setIsSubmitting(true);
 
     try {
       if (isRegisterMode) {
-        if (!name.trim()) {
-          setErrorMsg('Please enter your full name.');
-          setIsSubmitting(false);
-          return;
-        }
-        const res = await register(name, email, password, role);
+        if (name.trim().length < 2) throw new Error('Enter a name with at least 2 characters.');
+        if (password.length < 8) throw new Error('Use a password with at least 8 characters.');
+        const res = await register(name.trim(), normalizedEmail, password, role);
         if (!res.success) {
-          setErrorMsg(res.message || 'Registration failed. Please check your credentials.');
+          setErrorMsg(res.message || 'Registration failed. Please check your details and try again.');
         }
       } else {
-        const res = await login(email, password);
+        const res = await login(normalizedEmail, password);
         if (!res.success) {
           setErrorMsg(res.message || 'Invalid email or password. Check demo credentials below.');
         }
       }
-    } catch {
-      setErrorMsg('An unexpected error occurred. Please try again.');
+    } catch (error) {
+      setErrorMsg(error instanceof Error ? error.message : 'An unexpected error occurred. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -129,7 +135,7 @@ export const AuthPage: React.FC = () => {
           )}
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             {isRegisterMode && (
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1">
@@ -142,6 +148,9 @@ export const AuthPage: React.FC = () => {
                   <input
                     type="text"
                     required
+                    aria-label="Full name"
+                    minLength={2}
+                    autoComplete="name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="e.g. Marcus Rivera"
@@ -162,6 +171,8 @@ export const AuthPage: React.FC = () => {
                 <input
                   type="email"
                   required
+                  aria-label="Email address"
+                  autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="e.g. user@fleetpulse.io"
@@ -181,6 +192,9 @@ export const AuthPage: React.FC = () => {
                 <input
                   type="password"
                   required
+                  aria-label="Password"
+                  minLength={8}
+                  autoComplete={isRegisterMode ? 'new-password' : 'current-password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••••••"
@@ -194,7 +208,7 @@ export const AuthPage: React.FC = () => {
                 <label className="block text-xs font-semibold text-slate-300 mb-1.5">
                   Select Role & Operational Scope
                 </label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   <button
                     type="button"
                     onClick={() => setRole('OPERATIONS_MANAGER')}

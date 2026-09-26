@@ -23,10 +23,36 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const TOKEN_KEY = 'fleetpulse_jwt_token';
 const USER_KEY = 'fleetpulse_user_profile';
 
+function getStoredValue(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function persistSession(token: string, user: User): void {
+  try {
+    localStorage.setItem(TOKEN_KEY, token);
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+  } catch {
+    // Keep the authenticated session usable in memory if browser storage is unavailable.
+  }
+}
+
+function clearStoredSession(): void {
+  try {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
+  } catch {
+    // Clearing in-memory auth still signs the current tab out.
+  }
+}
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem(TOKEN_KEY));
+  const [token, setToken] = useState<string | null>(() => getStoredValue(TOKEN_KEY));
   const [user, setUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem(USER_KEY);
+    const saved = getStoredValue(USER_KEY);
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -41,7 +67,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Validate token on mount
   useEffect(() => {
     const verifyToken = async () => {
-      const savedToken = localStorage.getItem(TOKEN_KEY);
+      const savedToken = getStoredValue(TOKEN_KEY);
       if (!savedToken) {
         setIsLoading(false);
         return;
@@ -59,7 +85,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (data.success && data.user) {
             setUser(data.user);
             setToken(savedToken);
-            localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+            try {
+              localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+            } catch {
+              // The verified user remains available for this tab.
+            }
           } else {
             // Token invalid
             logout();
@@ -89,8 +119,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (res.ok && data.success) {
         setToken(data.token);
         setUser(data.user);
-        localStorage.setItem(TOKEN_KEY, data.token);
-        localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+        persistSession(data.token, data.user);
         playLoginChime();
         return { success: true };
       } else {
@@ -113,8 +142,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (res.ok && data.success) {
         setToken(data.token);
         setUser(data.user);
-        localStorage.setItem(TOKEN_KEY, data.token);
-        localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+        persistSession(data.token, data.user);
         playLoginChime();
         return { success: true };
       } else {
@@ -128,8 +156,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = () => {
     setToken(null);
     setUser(null);
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
+    clearStoredSession();
   };
 
   const quickLoginAs = async (role: AuthRole) => {
@@ -138,7 +165,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ? { email: 'ops@fleetpulse.io', password: 'password123' }
         : { email: 'mechanic@fleetpulse.io', password: 'password123' };
 
-    await login(creds.email, creds.password);
+    const result = await login(creds.email, creds.password);
+    if (!result.success) throw new Error(result.message || 'Quick login failed.');
   };
 
   return (

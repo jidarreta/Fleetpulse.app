@@ -33,19 +33,26 @@ export default function FleetDiagnosticCard({ vehicleId = "c39a2b8e-4f10-4123-b1
   const [riskData, setRiskData] = useState<RiskScoreData | null>(null);
   const [telemetry, setTelemetry] = useState<TelemetryPacket | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [riskLoadError, setRiskLoadError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
   const [workOrderCreated, setWorkOrderCreated] = useState<boolean>(false);
   const [wsConnected, setWsConnected] = useState<boolean>(false);
 
   // 1. Fetch Hybrid Risk Score & SHAP Diagnostics
   useEffect(() => {
+    const controller = new AbortController();
+    let active = true;
     async function fetchRiskScore() {
       setLoading(true);
+      setRiskLoadError(null);
       try {
-        const res = await fetch(`/api/v1/vehicles/${activeVehicleId}/risk-score`);
-        if (!res.ok) throw new Error('Failed to fetch risk score');
+        const res = await fetch(`/api/v1/vehicles/${activeVehicleId}/risk-score`, { signal: controller.signal });
+        if (!res.ok) throw new Error(`Risk service returned ${res.status}.`);
         const data: RiskScoreData = await res.json();
-        setRiskData(data);
+        if (active) setRiskData(data);
       } catch (err) {
+        if (!active || controller.signal.aborted) return;
+        setRiskLoadError(err instanceof Error ? err.message : 'Risk service is unavailable.');
         // Fallback Mock Data for UI rendering in Build mode
         setRiskData({
           vehicle_id: activeVehicleId,
@@ -60,11 +67,15 @@ export default function FleetDiagnosticCard({ vehicleId = "c39a2b8e-4f10-4123-b1
           ]
         });
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     }
-    fetchRiskScore();
-  }, [activeVehicleId]);
+    void fetchRiskScore();
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [activeVehicleId, retryCount]);
 
   // 2. Real-Time Telemetry Stream via WebSocket
   useEffect(() => {
@@ -123,7 +134,7 @@ export default function FleetDiagnosticCard({ vehicleId = "c39a2b8e-4f10-4123-b1
       <div className="flex flex-wrap justify-between items-center pb-4 mb-6 border-b border-slate-800 gap-3">
         <div>
           <span className="text-xs uppercase tracking-wider text-slate-400 font-semibold">Vehicle Asset ID</span>
-          <div className="flex items-center space-x-2 mt-0.5">
+          <div className="flex flex-wrap items-center gap-2 mt-0.5">
             <h2 className="text-xl font-bold font-mono text-cyan-400">{riskData.vehicle_id}</h2>
             <div className="flex items-center space-x-1">
               {['c39a2b8e-4f10-4123-b1d3-9f88102a0142', 'FP-042', 'FP-104'].map((id) => (
@@ -153,6 +164,13 @@ export default function FleetDiagnosticCard({ vehicleId = "c39a2b8e-4f10-4123-b1
           </div>
         </div>
       </div>
+
+      {riskLoadError && (
+        <div role="status" className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-xs text-amber-900">
+          <span>Live risk data is unavailable ({riskLoadError}). Showing the sample diagnostic until the service responds.</span>
+          <button type="button" onClick={() => setRetryCount((count) => count + 1)} className="rounded-full border border-amber-300 px-3 py-1.5 font-semibold hover:bg-amber-100">Retry</button>
+        </div>
+      )}
 
       {/* Primary KPI Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -241,7 +259,7 @@ export default function FleetDiagnosticCard({ vehicleId = "c39a2b8e-4f10-4123-b1
       </div>
 
       {/* Action Footer */}
-      <div className="flex justify-between items-center pt-4 border-t border-slate-800">
+      <div className="flex flex-wrap justify-between items-center gap-3 pt-4 border-t border-slate-800">
         <span className="text-xs text-slate-500">Model Artifact: Hybrid LightGBM-LSTM v1.4.2 (ONNX Engine)</span>
         <button
           onClick={handleCreateWorkOrder}

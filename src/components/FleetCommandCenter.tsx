@@ -278,22 +278,22 @@ export const FleetCommandCenter: React.FC<FleetCommandCenterProps> = ({
             </div>
 
             {/* Search and Subsystem filter */}
-            <div className="flex items-center space-x-2">
-              <div className="relative">
+            <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+              <div className="relative w-full sm:w-auto">
                 <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
                   placeholder="Search vehicle, VIN, driver..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="bg-slate-950 border border-slate-800 rounded-lg pl-8 pr-3 py-1 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500 w-44"
+                  className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 pl-8 pr-3 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500 sm:w-44 sm:py-1"
                 />
               </div>
 
               <select
                 value={selectedSubsystem}
                 onChange={(e) => setSelectedSubsystem(e.target.value)}
-                className="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1 text-xs text-slate-300 focus:outline-none focus:border-cyan-500"
+                className="max-w-full rounded-lg border border-slate-800 bg-slate-950 px-2.5 py-2 text-xs text-slate-300 focus:outline-none focus:border-cyan-500 sm:py-1"
               >
                 <option value="ALL">All Subsystems</option>
                 <option value="Cooling System">Cooling System</option>
